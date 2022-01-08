@@ -1,28 +1,36 @@
 "utf-8"
+
 from threading import Lock
 from collections import defaultdict
 
 __all__ = ['BaseEventEmitter', "EventEmitter"]
 
 
-
-#TODO add priority to the listeners
-#TODO add celery support
+# TODO add priority to the listeners
+# TODO add celery support
 
 class BaseEventEmitter:
     def __init__(self):
         self._events = defaultdict(dict)
         self.lock = Lock()
 
+    def _call_handlers(self, event, args, kwargs) -> bool:
+        """
 
-    def _call_handlers(self, event, args, kwargs):
+        Function calls all event listeners
+
+        :param event:
+        :param args:
+        :param kwargs:
+        :return bool:
+        """
         handled = False
         with self.lock:
             for f in self._events[event].values():
                 try:
                     self._emit_run(f, args, kwargs)
                 except Exception as exc:
-                    self._handle_error(exc, args, kwargs)
+                    raise exc
                 handled = True
         return handled
 
@@ -33,12 +41,6 @@ class BaseEventEmitter:
     def _remove_listener(self, event, listener):
         with self.lock:
             self._events[event].pop(listener)  # Not save
-
-    def _subscribe(self):
-        ...
-
-    def _unsubscribe(self):
-        ...
 
     @staticmethod
     def _emit_run(f, args, kwargs) -> None:
@@ -68,17 +70,11 @@ class BaseEventEmitter:
         :return: None
         """
         with self.lock:
-                self._events[event][f1] = f2
+            self._events[event][f1] = f2
 
     def _listeners_count(self, event) -> int:
         count_of_listeners = len(self._events[event].values())
         return count_of_listeners
-
-    def _handle_potential_error(self):
-        pass
-
-    def _handle_error(self, exc, args, kwargs):
-        pass
 
 
 class EventEmitter(BaseEventEmitter):
@@ -120,7 +116,28 @@ class EventEmitter(BaseEventEmitter):
 
         There are not be any errors because args for function without params will be ignored
 
-    Usage with once
+    Methods:
+        on - listen function until it is removed from the event
+
+        once - listens to a function only once, then deletes it
+
+        emit - calls all event listeners
+
+        listeners_count - return the number of listeners on event
+
+        get_events - return all events
+
+        remove_listeners - remove all listeners of event
+
+        remove_listener - remove single listener of event ( Not save )
+
+    There is one difference between once and on,
+    On after the call will be immediately deleted,
+    You should take this into account, but once will always be happy.
+
+    Listeners in which there are no parameters, and you pass them there, then nothing terrible will happen,
+    you can pass as many values as you like, if the listener does not accept anything and belongs to this event,
+    then it will be called
 
     """
 
@@ -137,15 +154,14 @@ class EventEmitter(BaseEventEmitter):
         else:
             return _wrapper(f)
 
-    def once(self,event,f=None):
+    def once(self, event, f=None):
 
         def _wrapper(f):
-            def f2(*args,**kwargs):
-                self._emit_run(f,args,kwargs)
-                self.remove_listener(event,f2)
+            def f2(*args, **kwargs):
+                self._emit_run(f, args, kwargs)
+                self.remove_listener(event, f2)
+
             self._add_handler(event, f, f2)
-
-
 
         if f is None:
             return _wrapper
@@ -166,6 +182,5 @@ class EventEmitter(BaseEventEmitter):
     def remove_listeners(self, event):
         self._remove_listeners(event)
 
-    def remove_listener(self,event,listener):
-        self._remove_listener(event,listener)
-
+    def remove_listener(self, event, listener):
+        self._remove_listener(event, listener)
