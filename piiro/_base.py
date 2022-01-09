@@ -1,5 +1,6 @@
-"utf-8"
+# -*- coding: utf-8 -*-
 
+import copy
 from threading import Lock
 from collections import defaultdict
 
@@ -40,7 +41,7 @@ class BaseEventEmitter:
 
     def _remove_listener(self, event, listener):
         with self.lock:
-            self._events[event].pop(listener)  # Not save
+            return self._events[event].pop(listener)  # Not save
 
     @staticmethod
     def _emit_run(f, args, kwargs) -> None:
@@ -75,6 +76,10 @@ class BaseEventEmitter:
     def _listeners_count(self, event) -> int:
         count_of_listeners = len(self._events[event].values())
         return count_of_listeners
+
+    def _raw_listeners(self, event):
+        with self.lock:
+            return copy.copy(self._events[event])
 
 
 class EventEmitter(BaseEventEmitter):
@@ -173,7 +178,7 @@ class EventEmitter(BaseEventEmitter):
         return called
 
     def listeners_count(self, event):
-        self._listeners_count(event)
+        return self._listeners_count(event)
 
     @property
     def get_events(self):
@@ -183,4 +188,7 @@ class EventEmitter(BaseEventEmitter):
         self._remove_listeners(event)
 
     def remove_listener(self, event, listener):
-        self._remove_listener(event, listener)
+        return self._remove_listener(event, listener)
+
+    def raw_listeners(self, event):
+        return self._raw_listeners(event)
