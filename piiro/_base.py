@@ -13,7 +13,7 @@ __all__ = ['BaseEventEmitter', "EventEmitter"]
 class BaseEventEmitter:
     def __init__(self):
         self._events = defaultdict(dict)
-        self.lock = Lock()
+        self._lock = Lock()
 
     def _call_handlers(self, event, args, kwargs) -> bool:
         """
@@ -26,7 +26,7 @@ class BaseEventEmitter:
         :return bool:
         """
         handled = False
-        with self.lock:
+        with self._lock:
             for f in self._events[event].values():
                 try:
                     self._emit_run(f, args, kwargs)
@@ -36,11 +36,11 @@ class BaseEventEmitter:
         return handled
 
     def _remove_listeners(self, event):
-        with self.lock:
+        with self._lock:
             self._events[event].clear()
 
     def _remove_listener(self, event, listener):
-        with self.lock:
+        with self._lock:
             return self._events[event].pop(listener)  # Not save
 
     @staticmethod
@@ -70,7 +70,7 @@ class BaseEventEmitter:
         :param f2: second function
         :return: None
         """
-        with self.lock:
+        with self._lock:
             self._events[event][f1] = f2
 
     def _listeners_count(self, event) -> int:
@@ -78,7 +78,7 @@ class BaseEventEmitter:
         return count_of_listeners
 
     def _raw_listeners(self, event):
-        with self.lock:
+        with self._lock:
             return copy.copy(self._events[event])
 
 
@@ -192,3 +192,4 @@ class EventEmitter(BaseEventEmitter):
 
     def raw_listeners(self, event):
         return self._raw_listeners(event)
+
